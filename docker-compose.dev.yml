@@ -1,0 +1,124 @@
+# ローカル開発用: ホットリロード対応
+# Usage: make dev
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pathplanner
+      POSTGRES_USER: pathplanner
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pathplanner"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  localstack:
+    image: localstack/localstack:3
+    environment:
+      SERVICES: sqs
+      DEFAULT_REGION: us-east-1
+    ports:
+      - "4566:4566"
+    volumes:
+      - "./scripts/init-localstack.sh:/etc/localstack/init/ready.d/init.sh"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: golang:1.23-alpine
+    command: sh /scripts/migrate.sh
+    volumes:
+      - ./migrations:/migrations
+      - ./scripts:/scripts
+      - go_mod_cache:/go/pkg/mod
+    environment:
+      DATABASE_URL: postgres://pathplanner:secret@db:5432/pathplanner?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: air -c .air.api.toml
+    volumes:
+      - ./backend:/app
+      - go_mod_cache:/go/pkg/mod
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://pathplanner:secret@db:5432/pathplanner?sslmode=disable
+      JWT_SECRET: dev-jwt-secret-change-in-prod
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/run-jobs
+      SQS_ENDPOINT: http://localstack:4566
+      AWS_REGION: us-east-1
+      PORT: "8080"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      COGNITO_USER_POOL_ID: "${COGNITO_USER_POOL_ID:-}"
+      COGNITO_CLIENT_ID: "${COGNITO_CLIENT_ID:-}"
+      COGNITO_REGION: "${COGNITO_REGION:-us-east-1}"
+      LOG_LEVEL: debug
+      CGO_ENABLED: "0"
+    depends_on:
+      db:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: air -c .air.worker.toml
+    volumes:
+      - ./backend:/app
+      - go_mod_cache:/go/pkg/mod
+    environment:
+      DATABASE_URL: postgres://pathplanner:secret@db:5432/pathplanner?sslmode=disable
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/run-jobs
+      SQS_ENDPOINT: http://localstack:4566
+      AWS_REGION: us-east-1
+      WORKER_CONCURRENCY: "4"
+      LOG_LEVEL: debug
+      CGO_ENABLED: "0"
+    depends_on:
+      db:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    volumes:
+      - ./frontend:/app
+      - node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: ""
+      VITE_COGNITO_DOMAIN: "${VITE_COGNITO_DOMAIN:-}"
+      VITE_COGNITO_CLIENT_ID: "${VITE_COGNITO_CLIENT_ID:-}"
+      VITE_APP_URL: "${VITE_APP_URL:-http://localhost:5173}"
+      API_TARGET: "http://api:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata_dev:
+  go_mod_cache:
+  node_modules:

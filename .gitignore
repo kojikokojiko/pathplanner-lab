@@ -1,0 +1,24 @@
+.env
+.env.local
+*.env
+
+# Go
+backend/tmp/
+backend/bin/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/terraform.tfstate.d/
+# .terraform.lock.hcl は commit する（プロバイダーバージョン固定のため）
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# OS
+.DS_Store

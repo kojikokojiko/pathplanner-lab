@@ -1,0 +1,6 @@
+FROM golang:1.23-alpine
+# air v1.61.5 は Go 1.23 対応
+RUN go install github.com/air-verse/air@v1.61.5
+WORKDIR /app
+COPY go.mod go.sum* ./
+RUN go mod download || true

@@ -1,0 +1,14 @@
+[build]
+  cmd = "go build -o ./tmp/worker ./cmd/worker"
+  bin = "./tmp/worker"
+  full_bin = "./tmp/worker"
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "vendor"]
+  delay = 1000
+
+[log]
+  time = true
+
+[color]
+  build = "cyan"
+  runner = "blue"
