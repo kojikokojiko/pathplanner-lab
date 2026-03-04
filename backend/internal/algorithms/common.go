@@ -13,7 +13,8 @@ type Cell struct {
 }
 
 type Point struct {
-	X, Y int
+	X int `json:"x"`
+	Y int `json:"y"`
 }
 
 func (p Point) String() string {

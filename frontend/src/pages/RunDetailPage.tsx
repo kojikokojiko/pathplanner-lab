@@ -119,7 +119,7 @@ export default function RunDetailPage() {
               <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-500 rounded inline-block" /> Path</span>
               <span className="flex items-center gap-1"><span className="w-3 h-3 bg-orange-500 rounded inline-block" /> Explored</span>
               <span className="flex items-center gap-1"><span className="w-3 h-3 bg-green-500 rounded inline-block" /> Start</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-500 rounded inline-block" /> Goal</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-500 rounded inline-block" /> Goal</span>
               <span className="flex items-center gap-1"><span className="w-3 h-3 bg-slate-700 rounded inline-block" /> Obstacle</span>
             </div>
             <GridViewer

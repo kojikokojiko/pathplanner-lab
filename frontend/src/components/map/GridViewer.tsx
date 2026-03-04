@@ -45,7 +45,7 @@ export default function GridViewer({ width, height, grid, artifacts }: Props) {
     const key = `${x},${y}`;
     if (ch === '#') return '#334155';
     if (ch === 'S' || (start && x === start.x && y === start.y)) return '#22c55e';
-    if (ch === 'G' || (goal && x === goal.x && y === goal.y)) return '#ef4444';
+    if (ch === 'G' || (goal && x === goal.x && y === goal.y)) return '#a855f7';
     if (path.has(key)) return '#3b82f6';
     const order = heatmap[key];
     if (order !== undefined) {

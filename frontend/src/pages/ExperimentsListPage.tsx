@@ -11,6 +11,17 @@ import Badge from '../components/ui/Badge';
 import Input from '../components/ui/Input';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
+function parseStartGoalFromGrid(grid: string): { start: { x: number; y: number } | null; goal: { x: number; y: number } | null } {
+  let start = null, goal = null;
+  grid.split('\n').forEach((row, y) => {
+    [...row].forEach((ch, x) => {
+      if (ch === 'S') start = { x, y };
+      if (ch === 'G') goal = { x, y };
+    });
+  });
+  return { start, goal };
+}
+
 const ALGORITHMS: { key: AlgorithmKey; label: string }[] = [
   { key: 'BFS', label: 'BFS' },
   { key: 'DIJKSTRA', label: 'Dijkstra' },
@@ -81,7 +92,16 @@ function NewExperimentModal({ onClose }: { onClose: () => void }) {
             <select
               className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-gray-100"
               value={mapId}
-              onChange={e => setMapId(e.target.value)}
+              onChange={e => {
+                const id = e.target.value;
+                setMapId(id);
+                const map = mapsData?.items?.find(m => m.id === id);
+                if (map) {
+                  const { start, goal } = parseStartGoalFromGrid(map.grid);
+                  if (start) { setStartX(start.x); setStartY(start.y); }
+                  if (goal)  { setGoalX(goal.x);   setGoalY(goal.y); }
+                }
+              }}
             >
               <option value="">-- Select Map --</option>
               {mapsData?.items?.map(m => (
