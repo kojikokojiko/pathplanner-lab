@@ -150,11 +150,7 @@ func NewAuthMiddleware(jwtSecret string, auth0KF *Auth0KeyFunc, upsert UpsertUse
 			)
 
 			if auth0KF != nil {
-				opts := []jwt.ParserOption{jwt.WithValidMethods([]string{"RS256"})}
-				if auth0KF.audience != "" {
-					opts = append(opts, jwt.WithAudiences(auth0KF.audience))
-				}
-				token, err = jwt.Parse(tokenStr, auth0KF.getKey, opts...)
+				token, err = jwt.Parse(tokenStr, auth0KF.getKey, jwt.WithValidMethods([]string{"RS256"}))
 			} else {
 				token, err = jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 					if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -181,6 +177,14 @@ func NewAuthMiddleware(jwtSecret string, auth0KF *Auth0KeyFunc, upsert UpsertUse
 				return
 			}
 
+			// Validate audience if configured
+			if auth0KF != nil && auth0KF.audience != "" {
+				if !claimContainsAudience(claims, auth0KF.audience) {
+					http.Error(w, `{"type":"about:blank","title":"Unauthorized","status":401,"detail":"invalid audience"}`, http.StatusUnauthorized)
+					return
+				}
+			}
+
 			// Auto-upsert Auth0 user on first login
 			if auth0KF != nil && upsert != nil {
 				email, _ := claims["email"].(string)
@@ -194,6 +198,20 @@ func NewAuthMiddleware(jwtSecret string, auth0KF *Auth0KeyFunc, upsert UpsertUse
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func claimContainsAudience(claims jwt.MapClaims, audience string) bool {
+	switch v := claims["aud"].(type) {
+	case string:
+		return v == audience
+	case []interface{}:
+		for _, a := range v {
+			if s, ok := a.(string); ok && s == audience {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func GetUserID(ctx context.Context) string {
