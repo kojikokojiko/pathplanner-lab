@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthSetup } from './hooks/useAuthSetup';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CallbackPage from './pages/CallbackPage';
@@ -11,6 +12,7 @@ import ComparePage from './pages/ComparePage';
 import { PrivateRoute } from './components/layout/PrivateRoute';
 
 export default function App() {
+  useAuthSetup();
   return (
     <BrowserRouter>
       <Routes>

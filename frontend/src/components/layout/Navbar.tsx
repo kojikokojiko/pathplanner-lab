@@ -1,13 +1,12 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Map, FlaskConical, GitCompare, LogOut } from 'lucide-react';
+import { useAuth0 } from '@auth0/auth0-react';
 
 export default function Navbar() {
-  const navigate = useNavigate();
+  const { logout } = useAuth0();
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
+    logout({ logoutParams: { returnTo: `${window.location.origin}/login` } });
   };
 
   return (

@@ -1,34 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { handleCallback } from '../lib/auth0';
+import { useAuth0 } from '@auth0/auth0-react';
 
 export default function CallbackPage() {
   const navigate = useNavigate();
-  const called = useRef(false);
+  const { isAuthenticated, isLoading, error } = useAuth0();
 
   useEffect(() => {
-    if (called.current) return;
-    called.current = true;
-
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const state = params.get('state') ?? '';
-    const error = params.get('error');
-
-    if (error || !code) {
-      navigate('/login');
-      return;
+    if (isLoading) return;
+    if (error || !isAuthenticated) {
+      navigate('/login', { replace: true });
+    } else {
+      navigate('/maps', { replace: true });
     }
-
-    handleCallback(code, state)
-      .then((idToken) => {
-        localStorage.setItem('token', idToken);
-        navigate('/maps');
-      })
-      .catch(() => {
-        navigate('/login');
-      });
-  }, [navigate]);
+  }, [isAuthenticated, isLoading, error, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
