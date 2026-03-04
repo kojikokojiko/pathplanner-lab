@@ -6,18 +6,18 @@ import (
 )
 
 type Config struct {
-	DatabaseURL         string
-	JWTSecret           string
-	SQSQueueURL         string
-	SQSEndpoint         string
-	AWSRegion           string
-	Port                string
-	AnthropicAPIKey     string
-	LogLevel            string
-	WorkerConcurrency   int
-	CognitoUserPoolID   string
-	CognitoClientID     string
-	CognitoRegion       string
+	DatabaseURL       string
+	JWTSecret         string
+	SQSQueueURL       string
+	SQSEndpoint       string
+	AWSRegion         string
+	Port              string
+	AnthropicAPIKey   string
+	LogLevel          string
+	WorkerConcurrency int
+	Auth0Domain       string
+	Auth0ClientID     string
+	Auth0Audience     string
 }
 
 func Load() *Config {
@@ -39,10 +39,6 @@ func Load() *Config {
 	if logLevel == "" {
 		logLevel = "info"
 	}
-	cognitoRegion := os.Getenv("COGNITO_REGION")
-	if cognitoRegion == "" {
-		cognitoRegion = region
-	}
 	return &Config{
 		DatabaseURL:       os.Getenv("DATABASE_URL"),
 		JWTSecret:         os.Getenv("JWT_SECRET"),
@@ -53,8 +49,8 @@ func Load() *Config {
 		AnthropicAPIKey:   os.Getenv("ANTHROPIC_API_KEY"),
 		LogLevel:          logLevel,
 		WorkerConcurrency: concurrency,
-		CognitoUserPoolID: os.Getenv("COGNITO_USER_POOL_ID"),
-		CognitoClientID:   os.Getenv("COGNITO_CLIENT_ID"),
-		CognitoRegion:     cognitoRegion,
+		Auth0Domain:       os.Getenv("AUTH0_DOMAIN"),
+		Auth0ClientID:     os.Getenv("AUTH0_CLIENT_ID"),
+		Auth0Audience:     os.Getenv("AUTH0_AUDIENCE"),
 	}
 }

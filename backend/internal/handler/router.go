@@ -19,9 +19,9 @@ type Deps struct {
 	CompareSvc     *service.CompareService
 	LLMSvc         *service.LLMService
 	IdempRepo      repository.IdempotencyRepository
-	JWTSecret      string
-	CognitoKeyFunc *middleware.CognitoKeyFunc
-	UpsertUser     middleware.UpsertUserFunc
+	JWTSecret    string
+	Auth0KeyFunc *middleware.Auth0KeyFunc
+	UpsertUser   middleware.UpsertUserFunc
 }
 
 func NewRouter(deps Deps) http.Handler {
@@ -44,7 +44,7 @@ func NewRouter(deps Deps) http.Handler {
 	runHandler := NewRunHandler(deps.RunSvc)
 	compareHandler := NewCompareHandler(deps.CompareSvc, deps.LLMSvc)
 
-	authMW := middleware.NewAuthMiddleware(deps.JWTSecret, deps.CognitoKeyFunc, deps.UpsertUser)
+	authMW := middleware.NewAuthMiddleware(deps.JWTSecret, deps.Auth0KeyFunc, deps.UpsertUser)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})

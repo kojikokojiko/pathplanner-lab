@@ -18,7 +18,7 @@ import (
 
 type userIDKey struct{}
 
-// ---- JWKS (Cognito RS256) ----
+// ---- JWKS (Auth0 RS256) ----
 
 type jwkKey struct {
 	Kty string `json:"kty"`
@@ -32,26 +32,25 @@ type jwksResponse struct {
 	Keys []jwkKey `json:"keys"`
 }
 
-// CognitoKeyFunc fetches and caches Cognito public keys.
-type CognitoKeyFunc struct {
+// Auth0KeyFunc fetches and caches Auth0 public keys.
+type Auth0KeyFunc struct {
 	mu        sync.RWMutex
 	keys      map[string]*rsa.PublicKey
 	jwksURL   string
+	audience  string
 	lastFetch time.Time
 }
 
-func NewCognitoKeyFunc(region, userPoolID string) *CognitoKeyFunc {
-	return &CognitoKeyFunc{
-		jwksURL: fmt.Sprintf(
-			"https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json",
-			region, userPoolID,
-		),
-		keys: make(map[string]*rsa.PublicKey),
+func NewAuth0KeyFunc(domain, audience string) *Auth0KeyFunc {
+	return &Auth0KeyFunc{
+		jwksURL:  fmt.Sprintf("https://%s/.well-known/jwks.json", domain),
+		audience: audience,
+		keys:     make(map[string]*rsa.PublicKey),
 	}
 }
 
-func (c *CognitoKeyFunc) refresh() error {
-	resp, err := http.Get(c.jwksURL) //nolint:gosec
+func (a *Auth0KeyFunc) refresh() error {
+	resp, err := http.Get(a.jwksURL) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("fetch jwks: %w", err)
 	}
@@ -75,10 +74,10 @@ func (c *CognitoKeyFunc) refresh() error {
 		}
 		newKeys[k.Kid] = pub
 	}
-	c.mu.Lock()
-	c.keys = newKeys
-	c.lastFetch = time.Now()
-	c.mu.Unlock()
+	a.mu.Lock()
+	a.keys = newKeys
+	a.lastFetch = time.Now()
+	a.mu.Unlock()
 	return nil
 }
 
@@ -101,7 +100,7 @@ func parseRSAPublicKey(nB64, eB64 string) (*rsa.PublicKey, error) {
 	}, nil
 }
 
-func (c *CognitoKeyFunc) getKey(token *jwt.Token) (interface{}, error) {
+func (a *Auth0KeyFunc) getKey(token *jwt.Token) (interface{}, error) {
 	if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 		return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 	}
@@ -110,18 +109,18 @@ func (c *CognitoKeyFunc) getKey(token *jwt.Token) (interface{}, error) {
 		return nil, fmt.Errorf("missing kid in token header")
 	}
 
-	c.mu.RLock()
-	key := c.keys[kid]
-	stale := time.Since(c.lastFetch) > 24*time.Hour
-	c.mu.RUnlock()
+	a.mu.RLock()
+	key := a.keys[kid]
+	stale := time.Since(a.lastFetch) > 24*time.Hour
+	a.mu.RUnlock()
 
 	if key == nil || stale {
-		if err := c.refresh(); err != nil {
+		if err := a.refresh(); err != nil {
 			return nil, err
 		}
-		c.mu.RLock()
-		key = c.keys[kid]
-		c.mu.RUnlock()
+		a.mu.RLock()
+		key = a.keys[kid]
+		a.mu.RUnlock()
 	}
 	if key == nil {
 		return nil, fmt.Errorf("unknown kid: %s", kid)
@@ -131,11 +130,11 @@ func (c *CognitoKeyFunc) getKey(token *jwt.Token) (interface{}, error) {
 
 // ---- Middleware ----
 
-// UpsertUserFunc is called after successful Cognito authentication to ensure
+// UpsertUserFunc is called after successful Auth0 authentication to ensure
 // the user exists in our database.
 type UpsertUserFunc func(ctx context.Context, id, email string) error
 
-func NewAuthMiddleware(jwtSecret string, cognitoKF *CognitoKeyFunc, upsert UpsertUserFunc) func(http.Handler) http.Handler {
+func NewAuthMiddleware(jwtSecret string, auth0KF *Auth0KeyFunc, upsert UpsertUserFunc) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
@@ -150,8 +149,12 @@ func NewAuthMiddleware(jwtSecret string, cognitoKF *CognitoKeyFunc, upsert Upser
 				err   error
 			)
 
-			if cognitoKF != nil {
-				token, err = jwt.Parse(tokenStr, cognitoKF.getKey, jwt.WithValidMethods([]string{"RS256"}))
+			if auth0KF != nil {
+				opts := []jwt.ParserOption{jwt.WithValidMethods([]string{"RS256"})}
+				if auth0KF.audience != "" {
+					opts = append(opts, jwt.WithAudiences(auth0KF.audience))
+				}
+				token, err = jwt.Parse(tokenStr, auth0KF.getKey, opts...)
 			} else {
 				token, err = jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 					if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -178,8 +181,8 @@ func NewAuthMiddleware(jwtSecret string, cognitoKF *CognitoKeyFunc, upsert Upser
 				return
 			}
 
-			// Auto-upsert Cognito user on first login
-			if cognitoKF != nil && upsert != nil {
+			// Auto-upsert Auth0 user on first login
+			if auth0KF != nil && upsert != nil {
 				email, _ := claims["email"].(string)
 				if err := upsert(r.Context(), userID, email); err != nil {
 					http.Error(w, `{"type":"about:blank","title":"Internal Server Error","status":500,"detail":"user upsert failed"}`, http.StatusInternalServerError)

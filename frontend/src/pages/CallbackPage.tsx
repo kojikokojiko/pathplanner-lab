@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { handleCallback } from '../lib/cognito';
+import { handleCallback } from '../lib/auth0';
 
 export default function CallbackPage() {
   const navigate = useNavigate();

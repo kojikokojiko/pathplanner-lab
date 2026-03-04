@@ -71,27 +71,27 @@ func main() {
 		llmSvc = service.NewLLMService(llmClient, runRepo, expRepo, mapRepo, llmRepo)
 	}
 
-	// Cognito JWKS (optional — local dev uses HMAC JWT when not configured)
-	var cognitoKF *middleware.CognitoKeyFunc
+	// Auth0 JWKS (optional — local dev uses HMAC JWT when not configured)
+	var auth0KF *middleware.Auth0KeyFunc
 	var upsertUser middleware.UpsertUserFunc
-	if cfg.CognitoUserPoolID != "" {
-		cognitoKF = middleware.NewCognitoKeyFunc(cfg.CognitoRegion, cfg.CognitoUserPoolID)
+	if cfg.Auth0Domain != "" {
+		auth0KF = middleware.NewAuth0KeyFunc(cfg.Auth0Domain, cfg.Auth0Audience)
 		upsertUser = func(ctx context.Context, id, email string) error {
 			return userRepo.Upsert(ctx, id, email)
 		}
 	}
 
 	deps := handler.Deps{
-		AuthSvc:        authSvc,
-		MapSvc:         mapSvc,
-		ExpSvc:         expSvc,
-		RunSvc:         runSvc,
-		CompareSvc:     compareSvc,
-		LLMSvc:         llmSvc,
-		IdempRepo:      idempRepo,
-		JWTSecret:      cfg.JWTSecret,
-		CognitoKeyFunc: cognitoKF,
-		UpsertUser:     upsertUser,
+		AuthSvc:      authSvc,
+		MapSvc:       mapSvc,
+		ExpSvc:       expSvc,
+		RunSvc:       runSvc,
+		CompareSvc:   compareSvc,
+		LLMSvc:       llmSvc,
+		IdempRepo:    idempRepo,
+		JWTSecret:    cfg.JWTSecret,
+		Auth0KeyFunc: auth0KF,
+		UpsertUser:   upsertUser,
 	}
 
 	router := handler.NewRouter(deps)

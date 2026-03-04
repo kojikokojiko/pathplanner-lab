@@ -1,11 +1,11 @@
-// Cognito Hosted UI PKCE helpers
+// Auth0 PKCE helpers
 
-const COGNITO_DOMAIN = import.meta.env.VITE_COGNITO_DOMAIN ?? '';
-const COGNITO_CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID ?? '';
+const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN ?? '';
+const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID ?? '';
 const APP_URL = import.meta.env.VITE_APP_URL ?? window.location.origin;
 const REDIRECT_URI = `${APP_URL}/auth/callback`;
 
-export const isCognitoEnabled = Boolean(COGNITO_DOMAIN && COGNITO_CLIENT_ID);
+export const isAuth0Enabled = Boolean(AUTH0_DOMAIN && AUTH0_CLIENT_ID);
 
 function base64UrlEncode(buffer: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)))
@@ -35,7 +35,7 @@ export async function startLoginFlow(): Promise<void> {
 
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id: COGNITO_CLIENT_ID,
+    client_id: AUTH0_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     scope: 'openid email profile',
     code_challenge: challenge,
@@ -43,7 +43,7 @@ export async function startLoginFlow(): Promise<void> {
     state,
   });
 
-  window.location.href = `https://${COGNITO_DOMAIN}/oauth2/authorize?${params}`;
+  window.location.href = `https://${AUTH0_DOMAIN}/authorize?${params}`;
 }
 
 export async function handleCallback(code: string, returnedState: string): Promise<string> {
@@ -59,13 +59,13 @@ export async function handleCallback(code: string, returnedState: string): Promi
 
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
-    client_id: COGNITO_CLIENT_ID,
+    client_id: AUTH0_CLIENT_ID,
     code,
     redirect_uri: REDIRECT_URI,
     code_verifier: verifier,
   });
 
-  const res = await fetch(`https://${COGNITO_DOMAIN}/oauth2/token`, {
+  const res = await fetch(`https://${AUTH0_DOMAIN}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
